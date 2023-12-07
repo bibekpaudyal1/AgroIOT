@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DeviceModal from "./DeviceConnectionModal";
 import { PulseIndicator } from "./PulseIndicator";
 import useBLE from "./useBLE";
@@ -17,7 +11,8 @@ const App = () => {
     allDevices,
     connectToDevice,
     connectedDevice,
-    heartRate,
+    temperature,
+    humidity,
     disconnectFromDevice,
   } = useBLE();
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
@@ -40,16 +35,18 @@ const App = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.heartRateTitleWrapper}>
+      <View style={styles.sensorDataWrapper}>
         {connectedDevice ? (
           <>
             <PulseIndicator />
-            <Text style={styles.heartRateTitleText}>Your Heart Rate Is:</Text>
-            <Text style={styles.heartRateText}>{heartRate} bpm</Text>
+            <Text style={styles.sensorDataText}>
+              Temperature: {temperature} °C
+            </Text>
+            <Text style={styles.sensorDataText}>Humidity: {humidity} %</Text>
           </>
         ) : (
-          <Text style={styles.heartRateTitleText}>
-            Please Connect to a Heart Rate Monitor
+          <Text style={styles.sensorDataText}>
+            Please Connect to the Sensor
           </Text>
         )}
       </View>
@@ -76,21 +73,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f2f2f2",
   },
-  heartRateTitleWrapper: {
+  sensorDataWrapper: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  heartRateTitleText: {
-    fontSize: 30,
-    fontWeight: "bold",
+  sensorDataText: {
+    fontSize: 20,
     textAlign: "center",
     marginHorizontal: 20,
     color: "black",
-  },
-  heartRateText: {
-    fontSize: 25,
-    marginTop: 15,
   },
   ctaButton: {
     backgroundColor: "#FF6060",
