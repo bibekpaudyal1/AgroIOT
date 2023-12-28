@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import DeviceModal from "./DeviceConnectionModal";
-import { PulseIndicator } from "./PulseIndicator";
 import useBLE from "./useBLE";
+
 
 const App = () => {
   const {
@@ -38,7 +38,7 @@ const App = () => {
       <View style={styles.sensorDataWrapper}>
         {connectedDevice ? (
           <>
-            <PulseIndicator />
+          
             <Text style={styles.sensorDataText}>
               Temperature: {temperature} °C
             </Text>

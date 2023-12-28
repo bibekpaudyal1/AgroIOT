@@ -1,11 +1,7 @@
-/* eslint-disable no-bitwise */
 import { useMemo, useState } from "react";
 import {
   PermissionsAndroid,
   Platform,
-  View,
-  Text,
-  TouchableOpacity,
 } from 'react-native';
 import {
   BleError,
@@ -15,12 +11,15 @@ import {
 } from 'react-native-ble-plx';
 import * as ExpoDevice from 'expo-device';
 import base64 from 'react-native-base64';
+import { Alert } from 'react-native';
+import Paho from 'paho-mqtt';
 
-// Update these UUIDs to match your ESP32 setup
+
 const TEMPERATURE_HUMIDITY_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
 const TEMPERATURE_HUMIDITY_CHARACTERISTIC =
   'beb5483e-36e1-4688-b7f5-ea07361b26a8';
 
+  // const client = new Paho.MQTT.Client(options.host, options.port, options.path);
 interface BluetoothLowEnergyApi {
   requestPermissions(): Promise<boolean>;
   scanForPeripherals(): void;
@@ -145,13 +144,112 @@ const useBLE = (): BluetoothLowEnergyApi => {
       console.log('No Data was received');
       return;
     }
-
-    const rawData = characteristic.value.toString();
-    const [receivedTemperature, receivedHumidity] = rawData.split(',');
+    const rawData1 = base64.decode(characteristic.value);
+    const rawData = rawData1.toString();
+    console.log(rawData);
+    const [receivedTemperature,receivedHumidity] = rawData.split(',');
+    console.log(receivedTemperature);
+    console.log(receivedHumidity);
 
     setTemperature(receivedTemperature);
     setHumidity(receivedHumidity);
+    const timestamp = new Date().toISOString();
+    const dataToStore = JSON.stringify({
+      temperature: receivedTemperature,
+      humidity: receivedHumidity,
+      timestamp: timestamp,
+    });
+    sendTemperatureHumidityDataToServer(receivedTemperature, receivedHumidity);
+
+    try {
+      // AsyncStorage.setItem('temperatureHumidityData', dataToStore);
+      // Alert.alert("The data has been saved to database");
+      // sendStoredDataToServer();
+      // const sendStoredDataToServer = async () => {
+        // const isConnected = await checkInternetConnection();
+        // Alert.alert("The internet is connected");
+    
+        const options = {
+          host: 'mosquitto',
+          port: 1883,
+          path: '/tmp/hum',
+          id: 'id_' + String(Math.random() * 100000),
+        };
+      
+        // if (isConnected) {
+          // const storedData = await AsyncStorage.getItem('temperatureHumidityData');
+      
+          if (dataToStore) {
+            const mqttClient = new Paho.Client(
+              options.host,
+              options.port,
+              options.path,
+              options.id
+            );
+            mqttClient.onConnectionLost = (responseObject) => {
+              if (responseObject.errorCode !== 0) {
+                console.log('onConnectionLost:' + responseObject.errorMessage);
+              }
+            };
+            mqttClient.connect({
+              onSuccess: () => {
+                console.log('MQTT connected');
+                const message = new Paho.Message(dataToStore);
+                message.destinationName = options.path;
+                mqttClient.send(message);
+                // AsyncStorage.removeItem('temperatureHumidityData');
+                Alert.alert("The MQTT is sending the data");
+              },
+              onFailure: (err) => {
+                console.log('MQTT connection failed:', err);
+                // Alert.alert("The MQTT is  not sendind the datasending the data");
+                
+              },
+            });
+          }
+        // } else {
+        //   console.log('No internet connection. Data not sent.');
+        // }
+      // };
+    
+    } catch (e) {
+      console.log('Error storing data:', e);
+      Alert.alert("Error with MQTT");
+    }
   };
+  // const checkInternetConnection = async () => {
+  //   const netInfoState = await NetInfo.fetch();
+  //   return netInfoState.isConnected;
+    
+  // };
+  const sendTemperatureHumidityDataToServer = async (temperature: string, humidity: string) => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/sendData', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          temperature,
+          humidity,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorMessage}`);
+      }
+  
+      const result = await response.json();
+      console.log(result.message);
+      Alert.alert(result.message);
+    } catch (error: any) {
+      const errorMessage = error.message || 'Unknown error';
+      console.error('Error sending data to the server:', errorMessage);
+      // Alert.alert('There is an error in the sending message:', errorMessage);
+    }
+  };
+  
 
   const startStreamingData = async (device: Device) => {
     if (device) {
@@ -162,6 +260,7 @@ const useBLE = (): BluetoothLowEnergyApi => {
       );
     } else {
       console.log('No Device Connected');
+      Alert.alert("The storage of your local device is full");
     }
   };
 
@@ -174,7 +273,9 @@ const useBLE = (): BluetoothLowEnergyApi => {
     disconnectFromDevice,
     temperature,
     humidity,
+
   };
+  
 };
 
 export default useBLE;
